@@ -1,0 +1,8 @@
+# These files are consumed by Linux tooling (Docker's parser, bash, Wine's Python).
+# A CRLF checkout reproduces two bugs already hit on this project: a Dockerfile that
+# fails to parse and dies at "scheduling build" with an empty log, and an entrypoint
+# that crash-loops on /usr/bin/env: 'bash\r': No such file or directory.
+* text eol=lf
+Dockerfile text eol=lf
+*.sh text eol=lf
+*.py text eol=lf
