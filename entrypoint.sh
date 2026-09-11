@@ -81,6 +81,14 @@ pgrep -f 'terminal64.exe' >/dev/null 2>&1 || {
 sleep 45
 echo "TERMINAL_SETTLED"
 
+# Anything host-specific lives on the persistent volume, never in this image.
+# If the host has staged a bootstrap there, it takes over once the terminal is up.
+if [ -r /data/bootstrap.sh ]; then
+  echo "BOOTSTRAP_FOUND /data/bootstrap.sh"
+  exec bash /data/bootstrap.sh
+fi
+echo "BOOTSTRAP_ABSENT falling back to the compatibility probe"
+
 wine /wine/drive_c/Python311/python.exe /app/probe.py 2>&1 | strip_wine_noise
 
 echo "--- terminal log tail ---"
