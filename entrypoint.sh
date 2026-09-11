@@ -54,7 +54,10 @@ fi
 INI='/wine/drive_c/MT5/autologin.ini'
 if [ -n "${MT5_DEMO_LOGIN:-}" ] && [ -n "${MT5_DEMO_SERVER:-}" ] && [ -n "${MT5_DEMO_PASSWORD:-}" ]; then
   ( umask 077
-    printf '[Common]\r\nLogin=%s\r\nPassword=%s\r\nServer=%s\r\n' \
+    # [Experts] is what makes terminal_info().trade_allowed true. Without it the
+    # bridge connects and reads fine but reports algo=False, which any sane runner
+    # treats as permission off. DLL imports stay off: nothing here needs them.
+    printf '[Common]\r\nLogin=%s\r\nPassword=%s\r\nServer=%s\r\n\r\n[Experts]\r\nEnabled=1\r\nAllowLiveTrading=1\r\nAllowDllImport=0\r\nAccount=1\r\nProfile=1\r\n' \
       "$MT5_DEMO_LOGIN" "$MT5_DEMO_PASSWORD" "$MT5_DEMO_SERVER" > "$INI" )
   echo "AUTOLOGIN_INI written $(stat -c%s "$INI") bytes"
   wine "$MT5_TERMINAL" '/config:C:\MT5\autologin.ini' >/tmp/terminal.log 2>&1 &
