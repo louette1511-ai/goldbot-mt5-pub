@@ -81,19 +81,42 @@ def main():
          f'equity={a.equity} balance={a.balance} trade_allowed={a.trade_allowed}')
 
     # 3. Live quotes and CLOSED candles for every pair the runner scans.
-    now = time.time()
+    #    Selecting a symbol does not fill its tick: the terminal has to subscribe
+    #    and then receive one from the server. Reading straight after the select
+    #    returns bid=0.0/ask=0.0 with an epoch timestamp, which is no data at all
+    #    and must never count as a live quote. So: select everything, let the
+    #    ticks arrive, and retry per symbol instead of trusting the first read.
+    selected = [s for s in SYMBOLS if m.symbol_select(s, True)]
+    print(f'  SYMBOLS_SELECTED {len(selected)}/{len(SYMBOLS)}', flush=True)
+    time.sleep(5)
+
     quote_rows, bad = [], []
     for s in SYMBOLS:
-        if not m.symbol_select(s, True):
+        if s not in selected:
             bad.append(f'{s}:select_failed')
             continue
-        tick = m.symbol_info_tick(s)
-        bars = m.copy_rates_from_pos(s, m.TIMEFRAME_M15, 1, 2)  # bar 1 = last CLOSED
+        tick = bars = None
+        for _ in range(10):
+            tick = m.symbol_info_tick(s)
+            bars = m.copy_rates_from_pos(s, m.TIMEFRAME_M15, 1, 2)  # bar 1 = last CLOSED
+            if (tick is not None and tick.bid > 0 and tick.ask > 0
+                    and bars is not None and len(bars) >= 2):
+                break
+            time.sleep(2)
+        now = time.time()
         if tick is None or bars is None or len(bars) < 2:
             bad.append(f'{s}:no_data')
             continue
+        if not (tick.bid > 0 and tick.ask > 0):
+            bad.append(f'{s}:zero_tick')
+            print(f'  QUOTE {s} FAIL bid={tick.bid} ask={tick.ask} (no tick received)', flush=True)
+            continue
         tick_age = round(now - tick.time, 1)
         bar_age = round(now - int(bars[-1]['time']), 1)
+        if tick_age > 600:
+            bad.append(f'{s}:stale_tick_{tick_age}s')
+            print(f'  QUOTE {s} FAIL stale tick_age={tick_age}s', flush=True)
+            continue
         quote_rows.append({'symbol': s, 'bid': tick.bid, 'ask': tick.ask,
                            'tick_age_s': tick_age, 'closed_bar_age_s': bar_age})
         print(f'  QUOTE {s} bid={tick.bid} ask={tick.ask} '
