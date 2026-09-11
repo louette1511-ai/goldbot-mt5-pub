@@ -72,10 +72,19 @@ RUN set -x \
  && FOUND=$(find /wine/drive_c -maxdepth 4 -iname 'terminal64.exe' -print -quit) \
  && echo "FOUND_TERMINAL=$FOUND" \
  && test -n "$FOUND" \
+ && MT5DIR=$(dirname "$FOUND") \
+ && echo "MT5_INSTALL_DIR=$MT5DIR" \
+ && ls -la "$MT5DIR" \
  && mkdir -p /wine/drive_c/MT5 \
- && cp "$FOUND" /wine/drive_c/MT5/terminal64.exe \
+ && cp -a "$MT5DIR"/. /wine/drive_c/MT5/ \
+ && rm -f /wine/drive_c/MT5/MetaEditor64.exe \
+          /wine/drive_c/MT5/metatester64.exe \
+          /wine/drive_c/MT5/uninstall.exe \
  && rm -f /tmp/mt5setup.exe \
  && test -s /wine/drive_c/MT5/terminal64.exe \
+ && SRVDAT=$(find /wine/drive_c/MT5 -maxdepth 2 -iname 'servers.dat' -print -quit) \
+ && echo "SERVERS_DAT=$SRVDAT" \
+ && test -n "$SRVDAT" \
  && echo "TERMINAL_STAGED_OK" \
  && ls -la /wine/drive_c/MT5/
 

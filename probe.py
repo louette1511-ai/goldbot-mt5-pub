@@ -48,9 +48,20 @@ def main():
         step('MT5_CREDENTIAL', False, 'not set in environment: ' + ', '.join(missing))
         return
 
-    # 1. Terminal starts under Wine and the Python bridge attaches.
-    if not m.initialize(TERMINAL, login=LOGIN, password=password, server=SERVER, timeout=60000):
-        step('MT5_CONNECTED', False, f'initialize failed code={m.last_error()}')
+    # 1. Terminal starts under Wine and the Python bridge attaches. A cold Wine
+    #    prefix is slow on first launch and Exness's login can need a second go,
+    #    so this retries rather than calling it dead on a single IPC timeout.
+    connected = False
+    for attempt in range(1, 7):
+        connected = bool(m.initialize(TERMINAL, login=LOGIN, password=password,
+                                      server=SERVER, timeout=90000))
+        print(f'MT5_INIT_ATTEMPT {attempt} ok={connected} err={m.last_error()}', flush=True)
+        if connected:
+            break
+        m.shutdown()
+        time.sleep(10)
+    if not connected:
+        step('MT5_CONNECTED', False, f'initialize failed after 6 attempts code={m.last_error()}')
         return
     del password
     t = m.terminal_info()
